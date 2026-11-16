@@ -1,0 +1,4 @@
+[09:04:33] ===== AdminFilter.asi loaded =====
+[09:04:33] samp.dll @ 040E0000, entry point 0xFDB60 (expected 0xFDB60)
+[09:04:33] Hooked CChat::AddEntry @ 04147BE0
+[09:05:00] Config loaded: 7 channel(s), enabled=1, captureAll=1
