@@ -12,14 +12,17 @@ import atexit
 import ctypes
 import msvcrt
 import os
+import shutil
 import subprocess
 import sys
 import time
 
-from common import (COLOR_NAMES, channels, enable_vt, fg, get, hex_color,
-                    is_true, load_ini, log_dir, monitor_work_areas, update_ini_keys)
+from common import (COLOR_NAMES, channels, enable_vt, fg, find_running_gta_dir,
+                    get, hex_color, is_true, load_ini, log_dir,
+                    monitor_work_areas, update_ini_keys)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 PATH_FILE = os.path.join(HERE, "ini_path.txt")
 VIEWER = os.path.join(HERE, "viewer.py")
 
@@ -32,17 +35,39 @@ YELLOW = "\x1b[38;2;255;255;80m"
 CYAN = "\x1b[38;2;80;255;255m"
 
 
+def ensure_installed_in_gta(gta_dir, template_ini=None):
+    """Ensure AdminFilter.asi and AdminFilter.ini exist in gta_dir."""
+    asi_src = os.path.join(ROOT, "build", "AdminFilter.asi")
+    ini_src = template_ini if (template_ini and os.path.exists(template_ini)) else os.path.join(ROOT, "config", "AdminFilter.ini")
+    asi_dst = os.path.join(gta_dir, "AdminFilter.asi")
+    ini_dst = os.path.join(gta_dir, "AdminFilter.ini")
+    if os.path.exists(asi_src) and not os.path.exists(asi_dst):
+        shutil.copy2(asi_src, asi_dst)
+        print(f"[+] AdminFilter.asi otomatis dipasang ke: {gta_dir}")
+    if os.path.exists(ini_src) and not os.path.exists(ini_dst):
+        shutil.copy2(ini_src, ini_dst)
+        print(f"[+] AdminFilter.ini otomatis dipasang ke: {gta_dir}")
+    return ini_dst
+
+
 def resolve_ini(arg):
+    saved = open(PATH_FILE, encoding="utf-8").read().strip() if os.path.exists(PATH_FILE) else ""
+    running_gta = find_running_gta_dir()
+
     if arg:
         path = arg
-    elif os.path.exists(PATH_FILE):
-        path = open(PATH_FILE, encoding="utf-8").read().strip()
+    elif running_gta:
+        # Otomatis ikuti folder GTA yang sedang dimainkan saat ini!
+        path = ensure_installed_in_gta(running_gta, saved)
+    elif saved and os.path.exists(saved):
+        path = saved
     else:
         print("Lokasi folder GTA San Andreas (yang ada gta_sa.exe):")
         gta = input("> ").strip().strip('"')
-        path = os.path.join(gta, "AdminFilter.ini")
+        path = ensure_installed_in_gta(gta, saved)
+
     if os.path.isdir(path):
-        path = os.path.join(path, "AdminFilter.ini")
+        path = ensure_installed_in_gta(path, saved)
     if not os.path.exists(path):
         sys.exit(f"AdminFilter.ini tidak ditemukan: {path}")
     with open(PATH_FILE, "w", encoding="utf-8") as f:
@@ -204,7 +229,11 @@ class Launcher:
         print(f"{CYAN}{BOLD}=================================================================={RESET}")
         print(f"  {BOLD}ADMIN FILTER CONTROL PANEL{RESET}   |   Master: {m_badge}")
         print(f"{CYAN}{BOLD}=================================================================={RESET}")
-        print(f"{DIM}  INI : {self.ini}{RESET}\n")
+        running_dir = find_running_gta_dir()
+        cur_dir = os.path.dirname(self.ini)
+        gta_status = f"{GREEN}GTA Jalan ({running_dir}){RESET}" if running_dir else f"{DIM}GTA Belum Jalan{RESET}"
+        print(f"  Folder GTA Aktif : {BOLD}{cur_dir}{RESET}  [{gta_status}]")
+        print(f"{DIM}  Config File      : {self.ini}{RESET}\n")
         print(f"  {BOLD}Tekan angka [1-{min(9, len(self.all_ch))}] untuk pilih channel mana yang dibuka / ditutup:{RESET}\n")
 
         for i, (n, s) in enumerate(self.all_ch):
@@ -230,8 +259,9 @@ class Launcher:
         print(f"  [{BOLD}SPACE{RESET}] Master ON/OFF (On = ke CMD, Off = semua masuk in-game)")
         print(f"  [{BOLD}1-9{RESET}]   Buka/tutup channel tertentu (yang OFF masuk ke in-game)")
         print(f"  [{BOLD}A{RESET}]     ON Semua Channel     [{BOLD}N{RESET}] OFF Semua Channel")
-        print(f"  [{BOLD}T{RESET}]     Susun Ulang Grid     [{BOLD}W{RESET}] Tambah Channel Baru")
-        print(f"  [{BOLD}Q{RESET}]     Keluar (otomatis matikan filter & kembali ke in-game)")
+        print(f"  [{BOLD}W{RESET}]     Tambah Channel Baru  [{BOLD}D{RESET}] Hapus Channel")
+        print(f"  [{BOLD}E{RESET}]     Buka Config (INI)    [{BOLD}G{RESET}] Ganti / Pasang ke Folder GTA Lain")
+        print(f"  [{BOLD}T{RESET}]     Susun Ulang Grid     [{BOLD}Q{RESET}] Keluar (otomatis kembali ke in-game)")
         print(f"{CYAN}=================================================================={RESET}")
 
     # ---------------------------------------------------------- wizard
@@ -271,6 +301,60 @@ class Launcher:
         self.sync(reopen=True, retile=True)
         self.status()
 
+    def delete_wizard(self):
+        print("\n=== Hapus Channel ===")
+        num = input(f"Ketik nomor channel [1-{len(self.all_ch)}] yang mau dihapus (Enter = batal): ").strip()
+        if not num.isdigit():
+            self.status()
+            return
+        idx = int(num) - 1
+        if idx < 0 or idx >= len(self.all_ch):
+            self.status()
+            return
+        name, _ = self.all_ch[idx]
+        confirm = input(f"Yakin hapus channel '{name}'? (y/n): ").strip().lower()
+        if confirm != "y":
+            self.status()
+            return
+        self.kill(name)
+        with open(self.ini, "r", encoding="utf-8-sig", errors="replace") as f:
+            raw_lines = f.readlines()
+        out = []
+        skip = False
+        target = f"[channel:{name.lower()}]"
+        for line in raw_lines:
+            s = line.strip()
+            if s.startswith("[") and s.endswith("]"):
+                skip = (s.lower() == target)
+            if not skip:
+                out.append(line)
+        with open(self.ini, "w", encoding="utf-8") as f:
+            f.writelines(out)
+        self.read()
+        self.sync(reopen=True, retile=True)
+        self.status()
+
+    def switch_gta_wizard(self):
+        print("\n=== Ganti / Pasang ke Folder GTA Lain ===")
+        print("Masukkan path folder GTA (yang ada gta_sa.exe / samp.dll), kosongkan untuk batal:")
+        new_gta = input("> ").strip().strip('"')
+        if not new_gta or not os.path.isdir(new_gta):
+            self.status()
+            return
+        for n in list(self.procs):
+            self.kill(n)
+        try:
+            self._write_ini([("General", "Enabled", "0")])
+        except Exception:
+            pass
+        new_ini = ensure_installed_in_gta(new_gta, self.ini)
+        self.ini = os.path.abspath(new_ini)
+        with open(PATH_FILE, "w", encoding="utf-8") as f:
+            f.write(self.ini)
+        self.activate_on_startup()
+        self.sync(reopen=True, retile=True)
+        self.status()
+
     def cleanup(self):
         if self.cleaned_up:
             return
@@ -288,9 +372,26 @@ class Launcher:
         self.activate_on_startup()
         self.sync(reopen=True)
         self.status()
+        last_gta_check = time.time()
+        last_running_dir = find_running_gta_dir()
         try:
             while True:
                 time.sleep(0.2)
+                if time.time() - last_gta_check > 2.0:
+                    last_gta_check = time.time()
+                    rdir = find_running_gta_dir()
+                    if rdir != last_running_dir:
+                        last_running_dir = rdir
+                        if rdir and os.path.normcase(rdir) != os.path.normcase(os.path.dirname(self.ini)):
+                            for n in list(self.procs):
+                                self.kill(n)
+                            new_ini = ensure_installed_in_gta(rdir, self.ini)
+                            self.ini = os.path.abspath(new_ini)
+                            with open(PATH_FILE, "w", encoding="utf-8") as f:
+                                f.write(self.ini)
+                            self.activate_on_startup()
+                            self.sync(reopen=True, retile=True)
+                        self.status()
                 if self.check_closed_windows():
                     self.status()
                 try:
@@ -326,6 +427,12 @@ class Launcher:
                         self.status()
                     elif k == "w":
                         self.add_wizard()
+                    elif k == "d":
+                        self.delete_wizard()
+                    elif k == "e":
+                        subprocess.Popen(["notepad.exe", self.ini])
+                    elif k == "g":
+                        self.switch_gta_wizard()
         finally:
             self.cleanup()
 

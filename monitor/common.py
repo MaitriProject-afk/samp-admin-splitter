@@ -150,3 +150,48 @@ def monitor_work_areas():
     user32.EnumDisplayMonitors(None, None, proc_t(cb), None)
     areas.sort(key=lambda a: not a[0])  # primary first
     return [a[1] for a in areas]
+
+
+class PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", ctypes.c_uint32),
+        ("cntUsage", ctypes.c_uint32),
+        ("th32ProcessID", ctypes.c_uint32),
+        ("th32DefaultHeapID", ctypes.c_void_p),
+        ("th32ModuleID", ctypes.c_uint32),
+        ("cntThreads", ctypes.c_uint32),
+        ("th32ParentProcessID", ctypes.c_uint32),
+        ("pcPriClassBase", ctypes.c_long),
+        ("dwFlags", ctypes.c_uint32),
+        ("szExeFile", ctypes.c_wchar * 260),
+    ]
+
+
+def find_running_gta_dir():
+    """Return directory of currently running gta_sa.exe, or None."""
+    k32 = ctypes.windll.kernel32
+    snap = k32.CreateToolhelp32Snapshot(0x00000002, 0)  # TH32CS_SNAPPROCESS
+    if snap == -1:
+        return None
+    try:
+        pe = PROCESSENTRY32W()
+        pe.dwSize = ctypes.sizeof(PROCESSENTRY32W)
+        if not k32.Process32FirstW(snap, ctypes.byref(pe)):
+            return None
+        while True:
+            if pe.szExeFile.lower() == "gta_sa.exe":
+                hproc = k32.OpenProcess(0x1000, False, pe.th32ProcessID)  # PROCESS_QUERY_LIMITED_INFORMATION
+                if hproc:
+                    try:
+                        buf = ctypes.create_unicode_buffer(1024)
+                        size = ctypes.c_uint32(1024)
+                        if k32.QueryFullProcessImageNameW(hproc, 0, buf, ctypes.byref(size)):
+                            return os.path.dirname(buf.value)
+                    finally:
+                        k32.CloseHandle(hproc)
+            if not k32.Process32NextW(snap, ctypes.byref(pe)):
+                break
+    finally:
+        k32.CloseHandle(snap)
+    return None
+
