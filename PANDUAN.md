@@ -1,13 +1,54 @@
-# Panduan Penggunaan SA-MP Admin Chat Splitter (0.3.DL)
+# Panduan Lengkap SA-MP Admin Chat Splitter (0.3.DL-R1)
 
 Alat ini memisahkan log admin, anti-cheat, report, dan ask dari chatbox in-game GTA SA-MP ke jendela-jendela CMD terpisah di monitor kedua. Saat kamu sedang fokus RP, chatbox game bersih dari spam admin, tapi kamu tetap bisa memantau semuanya secara *real-time*.
 
 ---
 
-## 1. Cara Menjalankan Sehari-hari
+## 1. Persyaratan & Cara Instalasi
+
+### A. Persyaratan (Requirements)
+1. **GTA San Andreas + SA-MP versi `0.3.DL-R1`**.
+2. **ASI Loader** sudah terpasang di folder GTA kamu (biasanya sudah otomatis ada jika kamu memakai CLEO, ModLoader, atau WindowedMode—ditandai dengan adanya `vorbisFile.dll` / `vorbisHooked.dll` atau `dinput8.dll` di folder GTA).
+3. **Python 3** untuk Windows (tidak butuh `pip install` library tambahan, cukup bawaan Python standar).
+4. **Setting Terminal Windows (Agar Jendela Bisa Tersusun Grid Otomatis):**
+   - Buka **Windows Settings** → **System** (atau *Privacy & security*) → **For developers**.
+   - Pada bagian **Terminal**, ubah dari *Windows Terminal* menjadi **Windows Console Host**.
+
+---
+
+### B. Cara Instalasi (Ada 2 Cara)
+
+#### Cara 1: Instalasi Otomatis (Direkomendasikan)
+1. Buka game GTA SA-MP kamu (dari folder GTA mana saja di PC kamu).
+2. Double-click file **`start_monitor.bat`** di folder project.
+3. Program akan otomatis mendeteksi lokasi folder `gta_sa.exe` yang sedang berjalan, lalu **otomatis meng-copy `AdminFilter.asi` dan `AdminFilter.ini`** ke folder GTA tersebut!
+   *(Catatan: Jika GTA sudah terlanjur jalan saat pertama kali dipasang, restart GTA sekali saja supaya `AdminFilter.asi` ter-load oleh game).*
+4. **Punya banyak folder GTA?** Cukup tekan tombol **`G`** di Control Panel, lalu masukkan path folder GTA lain—file `.asi` dan `.ini` akan otomatis dipasang ke sana.
+
+#### Cara 2: Instalasi Manual (Misal Mau Dipindah ke PC Lain)
+1. Copy **2 file** berikut ke dalam folder utama GTA San Andreas (satu folder dengan `gta_sa.exe` dan `samp.dll`):
+   - `build\AdminFilter.asi` → taruh di `FolderGTA\AdminFilter.asi`
+   - `config\AdminFilter.ini` → taruh di `FolderGTA\AdminFilter.ini`
+2. Folder **`monitor\`** (berisi `launcher.py`, `viewer.py`, `common.py`, `analyze.py`) dan **`start_monitor.bat`** bebas ditaruh di mana saja (di Desktop, Documents, atau di dalam folder GTA).
+3. Jalankan **`start_monitor.bat`**, lalu masukkan lokasi folder GTA kamu saat ditanya pertama kali.
+
+---
+
+### C. Cara Mengecek Apakah Plugin `.asi` Sudah Aktif
+Setelah masuk ke dalam game sekali, cek folder **`AdminFilter`** yang otomatis terbuat di dalam folder GTA kamu, lalu buka **`AdminFilter\AdminFilter.log`**.
+Jika instalasi sukses, isinya akan seperti ini:
+```text
+[09:10:42] ===== AdminFilter.asi loaded =====
+[09:10:42] samp.dll @ 03E70000, entry point 0xFDB60 (expected 0xFDB60)
+[09:10:42] Hooked CChat::AddEntry @ 03ED7650
+```
+
+---
+
+## 2. Cara Menjalankan Sehari-hari
 
 1. **Buka Game GTA SA-MP** seperti biasa.
-   *(Catatan: Selama Control Panel belum dibuka, semua chat akan masuk ke in-game seperti normal).*
+   *(Selama Control Panel belum dibuka, semua chat akan masuk ke in-game seperti normal).*
 2. **Double-click `start_monitor.bat`** (bisa dari `C:\Game RP\GTA\start_monitor.bat` atau dari folder project).
 3. **Jendela Control Panel** akan terbuka, dan otomatis membuka jendela CMD untuk setiap channel yang berstatus **`[ON -> CMD]`** di Monitor 2.
 4. **Selesai main / mau full di in-game:**
@@ -16,7 +57,7 @@ Alat ini memisahkan log admin, anti-cheat, report, dan ask dari chatbox in-game 
 
 ---
 
-## 2. Fungsi Tombol di Control Panel
+## 3. Fungsi Tombol di Control Panel
 
 Saat jendela **AdminFilter Control Panel** aktif, tekan tombol keyboard berikut (tanpa perlu tekan Enter):
 
@@ -37,12 +78,12 @@ Saat jendela **AdminFilter Control Panel** aktif, tekan tombol keyboard berikut 
 
 ---
 
-## 3. Instruksi Lengkap Cara Menambah Channel Baru
+## 4. Instruksi Lengkap Cara Menambah Channel Baru
 
 Untuk memisahkan jenis log baru, kamu hanya perlu tahu **teks awal** atau **kata kunci** dari pesan yang muncul di game.
 
 ### Langkah A: Cari Tahu Teks Pesannya
-Perhatikan pesan di game atau buka file `C:\Game RP\GTA\AdminFilter\logs\_all.log`.
+Perhatikan pesan di game atau buka file `AdminFilter\logs\_all.log` di dalam folder GTA kamu.
 Contoh pesan di server GTA: Central:
 - `(AntiCheat) Jayden_Love possible vehicle teleport...` -> Awalannya adalah **`(AntiCheat)`**
 - `[ASK] (Noah Albert - ID: 13) min...` -> Awalannya adalah **`[ASK]`**
@@ -71,7 +112,7 @@ Contoh pesan di server GTA: Central:
 ---
 
 #### Cara 2: Edit Manual Lewat Notepad (Untuk Kustomisasi Lanjutan)
-1. Di jendela **AdminFilter Control Panel**, tekan huruf **`E`** (atau buka `C:\Game RP\GTA\AdminFilter.ini`).
+1. Di jendela **AdminFilter Control Panel**, tekan huruf **`E`** (atau buka `AdminFilter.ini` di folder GTA kamu).
 2. Scroll ke paling bawah, lalu tambahkan blok baru dengan format berikut:
 
 ```ini
@@ -102,7 +143,3 @@ Beep=900,100
 | **`Action=`** | • `move` *(default)*: Sembunyikan dari in-game, tampilkan di CMD.<br>• `copy`: Tampilkan di CMD, tapi **tetap muncul** juga di in-game.<br>• `drop`: Buang/sembunyikan dari in-game tanpa membuka jendela CMD (cocok untuk menyembunyikan iklan/spam server). |
 | **`Color=`** | Warna header & teks default di CMD: `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `orange`, `white`, atau kode hex 6 digit seperti `FF6347`. |
 | **`Beep=`** | Bunyi notifikasi `frekuensi_hz,durasi_ms`.<br>• `1200,150` = bunyi tinggi (cocok untuk Anti-Cheat)<br>• `800,120` = bunyi sedang (cocok untuk Report)<br>• Kosongkan jika tidak ingin bunyi. |
-
-> **Catatan Penting:**
-> - Kode warna bawaan SA-MP seperti `{FF0000}` atau `{FFFFFF}` **otomatis dibersihkan** saat pencocokan pola. Jadi kamu cukup menulis teks biasa seperti `[ASK] (`, tidak perlu menulis `[ASK] {ebbc5a}(`.
-> - Urutan `[Channel:...]` di dalam `AdminFilter.ini` menentukan prioritas (dari atas ke bawah). Jika sebuah pesan cocok dengan channel di atas, pesan itu langsung masuk ke channel tersebut.
